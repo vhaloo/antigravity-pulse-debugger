@@ -22,7 +22,7 @@ def run_diagnostics(profile_name, conv_path):
         f_path = os.path.join(conv_path, f)
         if os.path.isfile(f_path):
             # Check for conflict files
-            if " (1)" in f or ".temp_" in f or ".pre_repair" in f or ".backup_" in f:
+            if " (1)" in f or ".temp_" in f or ".pre_repair" in f or ".backup_" in f or f.endswith(".pb"):
                 report["conflict_files"].append(f)
                 
     db_files = [f for f in os.listdir(conv_path) if f.endswith('.db')]

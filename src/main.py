@@ -3,7 +3,7 @@ import sys
 from .utils import (
     print_header, print_success, print_warning, print_error, print_info,
     find_sqlite_exe, find_conversation_dirs, check_running_processes,
-    BOLD, CYAN, YELLOW, RED, GREEN, RESET, WHITE
+    kill_all_processes, BOLD, CYAN, YELLOW, RED, GREEN, RESET, WHITE
 )
 from .diagnostics import run_diagnostics
 from .repair import repair_database, fix_stuck_steps, fix_protobuf_types, archive_conflict_files
@@ -23,12 +23,13 @@ def show_menu():
     print(f"  {BOLD}{GREEN}2.{RESET} Repair Malformed DBs, Cancel Zombified Steps, and Fix Protobufs")
     print(f"  {BOLD}{GREEN}3.{RESET} Archive Sync Conflicts and Orphans (*(1)* files)")
     print(f"  {BOLD}{GREEN}4.{RESET} Check Running Processes")
-    print(f"  {BOLD}{GREEN}5.{RESET} Exit")
+    print(f"  {BOLD}{GREEN}5.{RESET} Force Terminate (Kill) All Antigravity Processes")
+    print(f"  {BOLD}{GREEN}6.{RESET} Exit")
     try:
-        val = input(f"\n{BOLD}Choose option [1-5]:{RESET} ").strip()
+        val = input(f"\n{BOLD}Choose option [1-6]:{RESET} ").strip()
         return val
     except (KeyboardInterrupt, EOFError):
-        return "5"
+        return "6"
 
 def run_scan(conv_dirs):
     print_info("Starting full system diagnostics scan...")
@@ -215,10 +216,12 @@ def main():
             else:
                 print_success("No active Antigravity processes running.")
         elif choice == "5":
+            kill_all_processes()
+        elif choice == "6":
             print_info("Exiting Antigravity Pulse Debugger. Good day!")
             break
         else:
-            print_error("Invalid option. Please choose between 1 and 5.")
+            print_error("Invalid option. Please choose between 1 and 6.")
 
 if __name__ == "__main__":
     main()

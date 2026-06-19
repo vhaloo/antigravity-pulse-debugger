@@ -143,12 +143,46 @@ def check_running_processes():
             # Quick check via tasklist to see if process names are present
             res = subprocess.run("tasklist", capture_output=True, text=True, errors='ignore')
             tasks = res.stdout.lower()
-            if "antigravity" in tasks:
+            if "antigravity.exe" in tasks:
                 processes.append("Antigravity Desktop")
-            if "language_server" in tasks:
+            if "language_server.exe" in tasks:
                 processes.append("Language Server")
             if "agy.exe" in tasks:
                 processes.append("agy CLI")
     except Exception:
         pass
     return processes
+
+def kill_all_processes():
+    """Attempts to terminate all running Antigravity processes."""
+    if sys.platform != "win32":
+        print_error("Process termination is only supported on Windows.")
+        return False
+        
+    targets = ["Antigravity.exe", "language_server.exe", "agy.exe"]
+    success_killed = []
+    failed_killed = []
+    
+    for target in targets:
+        try:
+            # Check if running first
+            res = subprocess.run("tasklist", capture_output=True, text=True, errors='ignore')
+            if target.lower() in res.stdout.lower():
+                print_info(f"Terminating {target}...")
+                kill_res = subprocess.run(f"taskkill /F /IM {target}", capture_output=True, text=True, shell=True)
+                if kill_res.returncode == 0:
+                    success_killed.append(target)
+                else:
+                    failed_killed.append(target)
+        except Exception as e:
+            failed_killed.append(f"{target} ({str(e)})")
+            
+    if success_killed:
+        print_success(f"Successfully terminated: {', '.join(success_killed)}")
+    if failed_killed:
+        print_error(f"Failed to terminate: {', '.join(failed_killed)}")
+        
+    if not success_killed and not failed_killed:
+        print_success("No active Antigravity processes were found to terminate.")
+        
+    return len(failed_killed) == 0
