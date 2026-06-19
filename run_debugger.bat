@@ -47,5 +47,8 @@ if %errorlevel% neq 0 (
     echo [WARNING] The debugger exited with an error code.
 )
 echo.
-echo Process complete. Press any key to close.
-pause >nul
+echo ============================================================
+echo   Debugger execution finished. Terminal shell kept open.
+echo ============================================================
+echo.
+cmd /k

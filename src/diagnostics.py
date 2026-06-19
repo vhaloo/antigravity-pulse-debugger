@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from .utils import RED, GREEN, YELLOW, RESET
 
 def run_diagnostics(profile_name, conv_path):
     """Scans all databases in a conversation path for integrity issues, stuck steps, and malformed types."""
@@ -31,10 +32,19 @@ def run_diagnostics(profile_name, conv_path):
         db_path = os.path.join(conv_path, db_file)
         
         # Skip checking if file is size 0 (empty)
-        if os.path.getsize(db_path) == 0:
+        sz = os.path.getsize(db_path)
+        if sz == 0:
+            print(f"  • {db_file} (0 KB) -> {YELLOW}EMPTY{RESET}")
             continue
             
+        print(f"  • Scanning {db_file} ({sz/1024:.1f} KB)... ", end="", flush=True)
+            
         conn = None
+        is_corrupted = False
+        res = "ok"
+        stuck_count = 0
+        malformed_count = 0
+        
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -43,10 +53,10 @@ def run_diagnostics(profile_name, conv_path):
             cursor.execute("PRAGMA integrity_check;")
             res = cursor.fetchone()[0]
             if res != "ok":
+                is_corrupted = True
                 report["corrupted_dbs"].append((db_file, res))
                 
             # 2. Check for stuck steps (status 1=PENDING/INIT, 2=RUNNING, 8=WAITING)
-            # First verify table existence to be safe
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='steps';")
             if cursor.fetchone():
                 cursor.execute("SELECT COUNT(*) FROM steps WHERE status IN (1, 2, 8);")
@@ -63,10 +73,25 @@ def run_diagnostics(profile_name, conv_path):
                     report["malformed_protobufs"][db_file] = malformed_count
                     
         except Exception as e:
-            # If we threw an exception, the file itself is unreadable/corrupted
-            report["corrupted_dbs"].append((db_file, str(e)))
+            is_corrupted = True
+            res = str(e)
+            report["corrupted_dbs"].append((db_file, res))
         finally:
             if conn:
                 conn.close()
+                
+        # Verbose terminal reporting
+        status_strs = []
+        if is_corrupted:
+            status_strs.append(f"{RED}CORRUPTED ({res}){RESET}")
+        if stuck_count > 0:
+            status_strs.append(f"{YELLOW}{stuck_count} stuck steps{RESET}")
+        if malformed_count > 0:
+            status_strs.append(f"{YELLOW}{malformed_count} bad protobufs{RESET}")
+            
+        if not status_strs:
+            print(f"{GREEN}[OK]{RESET}")
+        else:
+            print(f"{', '.join(status_strs)}")
                 
     return report
