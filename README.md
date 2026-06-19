@@ -1,65 +1,53 @@
-# Antigravity Pulse Debugger
+# 🚀 Antigravity Pulse Debugger
 
-An all-in-one terminal diagnostics, SQLite recovery, and agent state repair tool built specifically for Antigravity platforms on Windows. 
+Welcome! This tool is designed to diagnose and repair issues with your Antigravity applications automatically in just **one click**. 
 
-This utility detects database corruption, clears zombified background tasks, fixes protobuf format mismatches, and keeps your conversations directory optimized and conflict-free.
-
----
-
-## Features
-
-1. **Automatic SQLite Recovery**: Scans database files and automatically repairs malformed databases (`database disk image is malformed`, btree page offsets, rowid out-of-order) using a safe pipeline wrapping SQLite's `.recover` utility.
-2. **Zombie Agent Cancellation**: Clears infinite spinner loading screens in both CLI and Desktop interfaces by updating orphaned steps stuck in running or waiting states (`1`, `2`, `8`) to a terminal state (`5` / `CANCELED`).
-3. **Protobuf Type Mismatch Patches**: Detects corrupted columns in the `gen_metadata` tables (e.g. numeric types written in blob columns) and updates them to correct empty BLOB fields, preventing language server startup panics.
-4. **Sync Conflict Archiving**: Automatically sweeps duplicate sync files (like `*(1).db-wal`), temporary SQLite states, and backup databases, moving them to a dedicated `archive_corrupted/` directory to prevent file locking and performance degradation.
-5. **No Installation (Zero Dependencies)**: Written purely using Python's standard libraries. Features built-in console color rendering via native Windows Virtual Terminal Processing.
+**You do NOT need to know anything about programming to use this tool.** 
 
 ---
 
-## Prerequisites
+## ⚡ Direct Quick Start (One-Click Run)
 
-- **Python 3.8+** (must be added to your system environment variable `PATH`).
-- **SQLite Engine**: The database recovery functionality relies on `sqlite3.exe`. The tool will automatically locate your DaVinci Resolve copy of `sqlite3.exe` (installed at `C:\Program Files\Blackmagic Design\DaVinci Resolve\sqlite3.exe`) or any copy on your system `PATH`.
+To run the debugger right now:
+1. Click this link: **[Run run_debugger.bat](file:///C:/Users/Vhaloo/Documents/AntigravityDebugger/run_debugger.bat)** (or double-click the `run_debugger.bat` file in this folder).
+2. A console window will open. Follow the on-screen options to scan and repair your databases!
 
 ---
 
-## Usage
+## 🔧 Automatic Prerequisites Setup (No Install Needed)
 
-### 1. The Quick Launch (Easiest)
-Simply double-click **`run_debugger.bat`** in the repository root. This will launch a colored terminal interface.
+The debugger is completely self-contained and handles its own setup:
+* **Python**: If Python is missing from your system, the script will offer to install it for you automatically using the built-in Windows Package Manager (`winget`).
+* **SQLite Engine**: If the database repair engine (`sqlite3.exe`) is missing, the tool will automatically download it from the official SQLite website and configure it locally.
 
-### 2. Manual CLI execution
-Navigate to the root directory in Command Prompt or PowerShell and execute:
+---
+
+## 📋 What Does It Do?
+
+When you run the tool, you can choose from these options:
+1. **Scan and Show Diagnostics Report**: Tells you if there is any corruption or stuck files without changing anything (safe view mode).
+2. **Full Repair**: Runs a safe, non-destructive repair:
+   * **Fixes Corrupted Databases**: Rebuilds damaged databases securely.
+   * **Unblocks Frozen Tasks**: Cancels stuck background agents that cause infinite loading screens.
+   * **Fixes Protocol Mismatches**: Repairs invalid data types that cause crashes.
+3. **Archive Conflict Files**: Sweeps and moves temporary/conflicted files (like OneDrive duplicates) to a safe `archive_corrupted` backup folder.
+
+---
+
+## 🛡️ Safe and Non-Destructive
+
+* **Auto-Backups**: Before modifying any database, the tool creates a backup copy in your `archive_corrupted` folder. Your conversation history is always safe.
+* **Radical Accuracy**: Only invalid, malformed, or zombified records are updated.
+
+---
+
+## 💻 Running via Command Line (For Developers)
+
+If you prefer to run it manually from Command Prompt or PowerShell:
 ```bash
 python -m src.main
 ```
 
 ---
 
-## Technical Details
-
-The tool works dynamically by scanning your local environment for Antigravity profile installations. It locates conversation databases by scanning all directories within `%USERPROFILE%\.gemini` containing a `conversations/` subdirectory (such as `.gemini\antigravity`, `.gemini\antigravity-cli`, and `.gemini\antigravity-ide`).
-
-### SQLite Recover Pipeline
-The utility repairs corruptions by copying the malformed file to a temporary area and running:
-```powershell
-"sqlite3.exe" "corrupted.db" ".recover" | "sqlite3.exe" "repaired.db"
-```
-It then verifies integrity using `PRAGMA integrity_check;` before safely swapping the active file with the repaired one.
-
-### Stuck Steps Update
-Active states (`1` / `PENDING`, `2` / `RUNNING`, `8` / `WAITING`) are updated inside the `steps` table:
-```sql
-UPDATE steps SET status = 5 WHERE status IN (1, 2, 8);
-```
-
-### Protobuf Reset
-Malformed integer values in metadata fields are corrected:
-```sql
-UPDATE gen_metadata SET data = X'', size = 0 WHERE typeof(data) IN ('integer', 'real', 'text');
-```
-
----
-
-## License
-MIT License. Created by Valentin Wittwe.
+*MIT License. Created by Valentin Wittwe.*
