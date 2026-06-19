@@ -1,0 +1,6 @@
+# Zero strict dependencies!
+# The debugger uses built-in Python libraries to stay lightweight, portable, and require no installation.
+# Just run run_debugger.bat!
+#
+# (Optional) For process listing support, standard psutil is checked, but fallback handles standard execution:
+# psutil>=5.9.0
