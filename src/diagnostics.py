@@ -11,6 +11,7 @@ def run_diagnostics(profile_name, conv_path):
         "corrupted_dbs": [],
         "stuck_dbs": {},
         "malformed_protobufs": {},
+        "empty_executor_dbs": [],
         "conflict_files": []
     }
     
@@ -72,6 +73,17 @@ def run_diagnostics(profile_name, conv_path):
                 if malformed_count > 0:
                     report["malformed_protobufs"][db_file] = malformed_count
                     
+            # 4. Check for empty executor_metadata (0 rows when steps exist)
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='executor_metadata';")
+            if cursor.fetchone():
+                cursor.execute("SELECT COUNT(*) FROM executor_metadata;")
+                exec_meta_count = cursor.fetchone()[0]
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='steps';")
+                if cursor.fetchone():
+                    cursor.execute("SELECT COUNT(*) FROM steps;")
+                    steps_count = cursor.fetchone()[0]
+                    if exec_meta_count == 0 and steps_count > 0:
+                        report.setdefault("empty_executor_dbs", []).append(db_file)
         except Exception as e:
             is_corrupted = True
             res = str(e)
@@ -88,6 +100,8 @@ def run_diagnostics(profile_name, conv_path):
             status_strs.append(f"{YELLOW}{stuck_count} stuck steps{RESET}")
         if malformed_count > 0:
             status_strs.append(f"{YELLOW}{malformed_count} bad protobufs{RESET}")
+        if db_file in report["empty_executor_dbs"]:
+            status_strs.append(f"{RED}empty executor_metadata{RESET}")
             
         if not status_strs:
             print(f"{GREEN}[OK]{RESET}")

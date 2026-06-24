@@ -37,6 +37,7 @@ def run_scan(conv_dirs):
     total_corrupted = 0
     total_stuck = 0
     total_protobuf = 0
+    total_empty_executor = 0
     total_conflicts = 0
     
     for name, path in conv_dirs.items():
@@ -71,6 +72,14 @@ def run_scan(conv_dirs):
         else:
             print_success("No metadata type mismatches (protobuf errors) found.")
             
+        if report.get('empty_executor_dbs'):
+            print_error(f"Found {len(report['empty_executor_dbs'])} database(s) with empty executor_metadata:")
+            for db in report['empty_executor_dbs']:
+                print(f"    • {db} (causes nil pointer panic on picker resume)")
+            total_empty_executor += len(report['empty_executor_dbs'])
+        else:
+            print_success("No empty executor_metadata tables found.")
+            
         if report['conflict_files']:
             print_warning(f"Found {len(report['conflict_files'])} orphaned or conflict files:")
             for f in report['conflict_files']:
@@ -81,7 +90,7 @@ def run_scan(conv_dirs):
             
     print(f"\n{BOLD}{CYAN}{'='*60}{RESET}")
     print(f"{BOLD}Global Diagnostics Summary:{RESET}")
-    if total_corrupted == 0 and total_stuck == 0 and total_protobuf == 0 and total_conflicts == 0:
+    if total_corrupted == 0 and total_stuck == 0 and total_protobuf == 0 and total_empty_executor == 0 and total_conflicts == 0:
         print_success("All Antigravity systems are 100% clean and healthy!")
     else:
         if total_corrupted > 0:
@@ -90,6 +99,8 @@ def run_scan(conv_dirs):
             print_warning(f"Total Stuck Steps: {total_stuck}")
         if total_protobuf > 0:
             print_warning(f"Total Corrupted Protobuf Fields: {total_protobuf}")
+        if total_empty_executor > 0:
+            print_error(f"Total Empty Executor Metadata Databases: {total_empty_executor}")
         if total_conflicts > 0:
             print_warning(f"Total Sync Conflict Files: {total_conflicts}")
             
@@ -129,6 +140,28 @@ def run_repair(conv_dirs, sqlite_exe):
                 print_success(f"Recovered {db}: {msg}")
             else:
                 print_error(f"Failed to recover {db}: {msg}")
+                
+        # 1.5. Archive empty executor_metadata databases to prevent picker panics
+        import shutil
+        for db in report.get('empty_executor_dbs', []):
+            db_path = os.path.join(path, db)
+            print_info(f"Archiving empty executor_metadata database {db} to prevent picker panic...")
+            if not os.path.exists(archive_dir):
+                os.makedirs(archive_dir)
+            dest = os.path.join(archive_dir, db)
+            if os.path.exists(dest):
+                base, ext = os.path.splitext(db)
+                dest = os.path.join(archive_dir, f"{base}_{int(time.time())}{ext}")
+            try:
+                shutil.move(db_path, dest)
+                print_success(f"Archived empty executor DB {db} -> {os.path.basename(dest)}")
+                # Move associated WAL/SHM if present
+                for ext in [".db-wal", ".db-shm"]:
+                    wal_src = db_path + ext
+                    if os.path.exists(wal_src):
+                        shutil.move(wal_src, os.path.join(archive_dir, db + ext))
+            except Exception as e:
+                print_error(f"Failed to archive empty executor DB {db}: {e}")
                 
         # 2. Fix stuck steps (status 1, 2, 8 -> 5)
         # Note: we re-scan databases since some may have been successfully recovered
